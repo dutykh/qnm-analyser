@@ -487,7 +487,7 @@ app.layout = html.Div(
                     value=1.0,
                     step=0.1,
                     min=0.1,
-                    debounce=True,
+                    debounce=False,
                     className="tol-input",
                 ),
                 html.Span(
