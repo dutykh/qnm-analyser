@@ -537,7 +537,7 @@ app.layout = html.Div(
                         "Dr. Denys Dutykh — Khalifa University of Science "
                         "and Technology, Abu Dhabi, UAE — ",
                         html.A(
-                            "denys-dutykh.com",
+                            "www.denys-dutykh.com",
                             href="https://www.denys-dutykh.com/",
                             target="_blank",
                             rel="noopener noreferrer",
