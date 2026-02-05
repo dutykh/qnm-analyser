@@ -1,0 +1,8 @@
+# QNM Analyser — Python dependencies
+# Author: Dr. Denys Dutykh (https://www.denys-dutykh.com/)
+dash>=2.14
+plotly>=5.18
+numpy>=1.24
+scipy>=1.11
+kaleido>=0.2.1
+gunicorn>=21.2
