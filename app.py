@@ -62,11 +62,6 @@ _COMMON_AXIS = dict(
 
 LAYOUT_LIGHT = dict(
     template="simple_white",
-    title=dict(
-        text=r"$\text{QNMs: Massive scalar on Schwarzschild}$",
-        x=0.5,
-        font=dict(size=18),
-    ),
     xaxis=dict(
         title=r"$\mathrm{Re}(\omega)$",
         gridcolor="lightgrey",
@@ -85,18 +80,13 @@ LAYOUT_LIGHT = dict(
     legend=dict(title="", borderwidth=0, font=dict(size=13)),
     width=900,
     height=700,
-    margin=dict(l=80, r=40, t=80, b=80),
+    margin=dict(l=80, r=40, t=40, b=80),
     paper_bgcolor="white",
     plot_bgcolor="white",
 )
 
 LAYOUT_DARK = dict(
     template="plotly_dark",
-    title=dict(
-        text=r"$\text{QNMs: Massive scalar on Schwarzschild}$",
-        x=0.5,
-        font=dict(size=18, color="#e0e0e0"),
-    ),
     xaxis=dict(
         title=dict(text=r"$\mathrm{Re}(\omega)$", font=dict(color="#ddd")),
         gridcolor="#444",
@@ -126,7 +116,7 @@ LAYOUT_DARK = dict(
     ),
     width=900,
     height=700,
-    margin=dict(l=80, r=40, t=80, b=80),
+    margin=dict(l=80, r=40, t=40, b=80),
     paper_bgcolor="#1e1e1e",
     plot_bgcolor="#2a2a2a",
 )
@@ -363,12 +353,19 @@ def generate_report_text(datasets, tol_value):
 app = Dash(
     __name__,
     external_scripts=[
-        "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js"
-        "?config=TeX-AMS-MML_SVG",
+        {
+            "src": (
+                "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js"
+                "?config=TeX-AMS-MML_SVG"
+            ),
+            "integrity": "sha512-M36RUChWzAh1veeenRZFql7HydLEnkYmoloiCvVrhz402UZgKI93qkV7SsaxtVKdN95Wzajh39ysrXCq34NTsg==",
+            "crossorigin": "anonymous",
+        }
     ],
     title="QNM Analyser",
 )
 server = app.server  # entry-point for gunicorn: app:server
+server.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 
 
 def _make_upload_slot(i):
@@ -461,18 +458,21 @@ app.layout = html.Div(
             className="upload-panel",
         ),
         # Plot
-        dcc.Graph(
-            id="qnm-plot",
-            mathjax=True,
-            config={
-                "scrollZoom": True,
-                "toImageButtonOptions": {
-                    "format": "png",
-                    "scale": 3,
-                    "filename": "qnm_complex_plane",
+        html.Div(
+            dcc.Graph(
+                id="qnm-plot",
+                mathjax=True,
+                config={
+                    "scrollZoom": True,
+                    "toImageButtonOptions": {
+                        "format": "png",
+                        "scale": 3,
+                        "filename": "qnm_complex_plane",
+                    },
                 },
-            },
-            style={"height": "70vh"},
+                style={"height": "70vh"},
+            ),
+            style={"display": "flex", "justifyContent": "center"},
         ),
         # Controls bar
         html.Div(
