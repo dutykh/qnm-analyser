@@ -1,0 +1,301 @@
+/*
+ * QNM Analyser — Custom styles
+ *
+ * Author: Dr. Denys Dutykh
+ *         Khalifa University of Science and Technology, Abu Dhabi, UAE
+ *         https://www.denys-dutykh.com/
+ */
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
+body {
+    margin: 0;
+    padding: 0;
+}
+
+#app-container {
+    font-family: "Computer Modern", "Times New Roman", serif;
+    min-height: 100vh;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* ------------------------------------------------------------------ */
+/* Light theme (default)                                               */
+/* ------------------------------------------------------------------ */
+.light-theme {
+    background-color: #fafafa;
+    color: #222;
+}
+
+.light-theme .upload-slot {
+    border-color: #ddd;
+    background: white;
+}
+
+.light-theme .upload-zone {
+    border-color: #aaa;
+    color: #555;
+}
+
+.light-theme .upload-zone:hover {
+    border-color: #0072B2;
+    background-color: #f0f8ff;
+}
+
+.light-theme .footer-text {
+    color: #888;
+}
+
+.light-theme .footer-text a {
+    color: #0072B2;
+}
+
+.light-theme .subtitle {
+    color: #666;
+}
+
+.light-theme .convergence-info {
+    color: #555;
+}
+
+.light-theme .theme-toggle-btn {
+    background: #eee;
+    border-color: #ccc;
+    color: #333;
+}
+
+.light-theme .report-btn {
+    background-color: #f0f0f0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Dark theme                                                          */
+/* ------------------------------------------------------------------ */
+.dark-theme {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+}
+
+.dark-theme .upload-slot {
+    border-color: #444;
+    background: #2a2a2a;
+}
+
+.dark-theme .upload-zone {
+    border-color: #555;
+    color: #aaa;
+}
+
+.dark-theme .upload-zone:hover {
+    border-color: #56B4E9;
+    background-color: #333;
+}
+
+.dark-theme .footer-text {
+    color: #777;
+}
+
+.dark-theme .footer-text a {
+    color: #56B4E9;
+}
+
+.dark-theme .subtitle {
+    color: #999;
+}
+
+.dark-theme .convergence-info {
+    color: #aaa;
+}
+
+.dark-theme .theme-toggle-btn {
+    background: #333;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+.dark-theme .tol-input,
+.dark-theme .resolution-input {
+    background-color: #333;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+.dark-theme .clear-btn {
+    background-color: #333;
+    color: #ccc;
+    border-color: #555;
+}
+
+.dark-theme .report-btn {
+    background-color: #333;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+.dark-theme button {
+    background-color: #333;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+.dark-theme .Select-control,
+.dark-theme .Select-menu-outer {
+    background-color: #333 !important;
+    color: #e0e0e0 !important;
+    border-color: #555 !important;
+}
+
+.dark-theme .filename-label {
+    color: #999;
+}
+
+/* ------------------------------------------------------------------ */
+/* Header                                                              */
+/* ------------------------------------------------------------------ */
+.header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px 4px;
+    position: relative;
+}
+
+.header-bar h2 {
+    font-family: "Computer Modern", "Times New Roman", serif;
+}
+
+/* ------------------------------------------------------------------ */
+/* Theme toggle                                                        */
+/* ------------------------------------------------------------------ */
+.theme-toggle-btn {
+    position: absolute;
+    right: 20px;
+    top: 14px;
+    font-size: 20px;
+    border: 1px solid;
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.theme-toggle-btn:hover {
+    opacity: 0.8;
+}
+
+/* ------------------------------------------------------------------ */
+/* Subtitle                                                            */
+/* ------------------------------------------------------------------ */
+.subtitle {
+    text-align: center;
+    font-size: 14px;
+    margin: 0 0 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Upload panel                                                        */
+/* ------------------------------------------------------------------ */
+.upload-panel {
+    display: flex;
+    gap: 16px;
+    padding: 0 16px 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.upload-slot {
+    flex: 1;
+    max-width: 280px;
+    min-width: 220px;
+    border: 1px solid;
+    border-radius: 8px;
+    padding: 12px;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.upload-zone {
+    width: 100%;
+    height: 60px;
+    line-height: 60px;
+    border-width: 2px;
+    border-style: dashed;
+    border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    font-size: 14px;
+}
+
+.filename-label {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 120px;
+}
+
+.resolution-input {
+    width: 70px;
+    font-size: 13px;
+}
+
+.clear-btn {
+    margin-left: 8px;
+    font-size: 12px;
+    padding: 2px 10px;
+    cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ */
+/* Controls bar                                                        */
+/* ------------------------------------------------------------------ */
+.controls-bar {
+    text-align: center;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.tol-input {
+    width: 80px;
+    font-size: 14px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+.convergence-info {
+    font-size: 13px;
+    margin-right: 20px;
+}
+
+.legend-dropdown {
+    width: 150px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 20px;
+}
+
+.report-btn {
+    padding: 8px 20px;
+    font-size: 14px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ */
+/* Footer                                                              */
+/* ------------------------------------------------------------------ */
+.footer-text {
+    text-align: center;
+    font-size: 13px;
+    margin: 0 0 12px;
+}

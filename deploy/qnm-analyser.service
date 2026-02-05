@@ -1,0 +1,26 @@
+# QNM Analyser — systemd service
+# Author: Dr. Denys Dutykh
+#         Khalifa University of Science and Technology, Abu Dhabi, UAE
+#         https://www.denys-dutykh.com/
+
+[Unit]
+Description=QNM Analyser Web Application
+After=network.target
+
+[Service]
+Type=exec
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/qnm-analyser
+Environment="PATH=/opt/qnm-analyser/venv/bin:/usr/bin"
+ExecStart=/opt/qnm-analyser/venv/bin/gunicorn \
+    --config /opt/qnm-analyser/gunicorn_conf.py \
+    app:server
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
