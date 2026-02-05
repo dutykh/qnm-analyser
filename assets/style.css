@@ -9,11 +9,17 @@
 /* ------------------------------------------------------------------ */
 /* Base                                                                */
 /* ------------------------------------------------------------------ */
-body {
+html, body {
     margin: 0;
     padding: 0;
+    height: 100%;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: #fafafa;
+}
+
+body:has(.dark-theme) {
+    background-color: #1a1a1a;
 }
 
 #app-container {
@@ -152,29 +158,40 @@ a {
     border-bottom: 1px solid #eee;
 }
 
-/* Light slider */
-.light-theme .tol-slider .rc-slider-track {
-    background-color: #0072B2;
-    height: 6px;
-    border-radius: 3px;
+/* Light slider — use !important to override Dash component styles */
+.light-theme .tol-slider .rc-slider-track,
+.light-theme .tol-slider [class*="slider"] [class*="track"] {
+    background-color: #0072B2 !important;
+    height: 6px !important;
+    border-radius: 3px !important;
 }
 
-.light-theme .tol-slider .rc-slider-rail {
-    height: 6px;
-    border-radius: 3px;
-    background-color: #e0e0e0;
+.light-theme .tol-slider .rc-slider-rail,
+.light-theme .tol-slider [class*="slider"] [class*="rail"] {
+    height: 6px !important;
+    border-radius: 3px !important;
+    background-color: #ddd !important;
 }
 
-.light-theme .tol-slider .rc-slider-handle {
-    border: 3px solid #0072B2;
-    background-color: white;
-    box-shadow: 0 1px 4px rgba(0, 114, 178, 0.25);
+.light-theme .tol-slider .rc-slider-handle,
+.light-theme .tol-slider [class*="slider"] [class*="handle"] {
+    border: 3px solid #0072B2 !important;
+    background-color: white !important;
+    box-shadow: 0 1px 4px rgba(0, 114, 178, 0.25) !important;
 }
 
 .light-theme .tol-slider .rc-slider-handle:hover,
-.light-theme .tol-slider .rc-slider-handle:active {
-    border-color: #005a8e;
-    box-shadow: 0 2px 6px rgba(0, 114, 178, 0.35);
+.light-theme .tol-slider .rc-slider-handle:active,
+.light-theme .tol-slider [class*="handle"]:hover,
+.light-theme .tol-slider [class*="handle"]:active {
+    border-color: #005a8e !important;
+    box-shadow: 0 2px 6px rgba(0, 114, 178, 0.35) !important;
+}
+
+.light-theme .tol-slider .rc-slider-mark-text,
+.light-theme .tol-slider [class*="mark"] span,
+.light-theme .tol-slider span[class*="mark"] {
+    color: #555 !important;
 }
 
 /* ------------------------------------------------------------------ */
@@ -324,38 +341,52 @@ a {
     border-bottom: 1px solid #333;
 }
 
-/* Dark slider */
-.dark-theme .tol-slider .rc-slider-rail {
-    background-color: #444;
-    height: 6px;
-    border-radius: 3px;
+/* Dark slider — use !important to override Dash inline/component styles */
+.dark-theme .tol-slider .rc-slider-rail,
+.dark-theme .tol-slider [class*="slider"] [class*="rail"] {
+    background-color: #555 !important;
+    height: 6px !important;
+    border-radius: 3px !important;
 }
 
-.dark-theme .tol-slider .rc-slider-track {
-    background-color: #56B4E9;
-    height: 6px;
-    border-radius: 3px;
+.dark-theme .tol-slider .rc-slider-track,
+.dark-theme .tol-slider [class*="slider"] [class*="track"] {
+    background-color: #56B4E9 !important;
+    height: 6px !important;
+    border-radius: 3px !important;
 }
 
-.dark-theme .tol-slider .rc-slider-handle {
-    border: 3px solid #56B4E9;
-    background-color: #333;
-    box-shadow: 0 1px 4px rgba(86, 180, 233, 0.3);
+.dark-theme .tol-slider .rc-slider-handle,
+.dark-theme .tol-slider [class*="slider"] [class*="handle"] {
+    border: 3px solid #56B4E9 !important;
+    background-color: #333 !important;
+    box-shadow: 0 1px 4px rgba(86, 180, 233, 0.3) !important;
 }
 
 .dark-theme .tol-slider .rc-slider-handle:hover,
-.dark-theme .tol-slider .rc-slider-handle:active {
-    border-color: #7dc8f0;
-    box-shadow: 0 2px 6px rgba(86, 180, 233, 0.45);
+.dark-theme .tol-slider .rc-slider-handle:active,
+.dark-theme .tol-slider [class*="handle"]:hover,
+.dark-theme .tol-slider [class*="handle"]:active {
+    border-color: #7dc8f0 !important;
+    box-shadow: 0 2px 6px rgba(86, 180, 233, 0.45) !important;
 }
 
-.dark-theme .tol-slider .rc-slider-dot {
-    border-color: #555;
-    background-color: #333;
+.dark-theme .tol-slider .rc-slider-dot,
+.dark-theme .tol-slider [class*="slider"] [class*="dot"] {
+    border-color: #666 !important;
+    background-color: #444 !important;
 }
 
-.dark-theme .tol-slider .rc-slider-mark-text {
-    color: #999;
+.dark-theme .tol-slider .rc-slider-mark-text,
+.dark-theme .tol-slider [class*="mark"] span,
+.dark-theme .tol-slider span[class*="mark"] {
+    color: #bbb !important;
+}
+
+.dark-theme .tol-slider .rc-slider-tooltip-inner,
+.dark-theme .tol-slider [class*="tooltip"] {
+    background-color: #444 !important;
+    color: #e0e0e0 !important;
 }
 
 /* ------------------------------------------------------------------ */
