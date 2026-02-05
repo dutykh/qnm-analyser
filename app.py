@@ -64,6 +64,7 @@ _COMMON_AXIS = dict(
     spikemode="across",
     spikethickness=1,
     spikedash="dot",
+    exponentformat="power",
 )
 
 LAYOUT_LIGHT = dict(
