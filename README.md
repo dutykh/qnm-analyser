@@ -3,9 +3,9 @@
 **Online tool to analyse quasi-normal modes in gravitational physics.**
 
 **Author:** Dr. Denys Dutykh — Khalifa University of Science and Technology,
-Abu Dhabi, UAE — [denys-dutykh.com](https://www.denys-dutykh.com/)
+Abu Dhabi, UAE — [https://www.denys-dutykh.com/](https://www.denys-dutykh.com/)
 
-**Live instance:** <https://www.qnm-anal.denys-dutykh.com/>
+**Live instance:** [https://www.qnm-anal.denys-dutykh.com/](https://www.qnm-anal.denys-dutykh.com/)
 
 <p align="center">
   <img src="assets/QNM-analyser.png" alt="QNM Analyser — Black holes, wormholes, quasi-normal modes and ringdown spectra" width="700">
@@ -57,7 +57,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open <http://127.0.0.1:8050> in a browser.
+Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in a browser.
 
 ## Deployment on Ubuntu VPS
 
@@ -86,14 +86,14 @@ qnm-analyser/
 
 ## Dependencies
 
-| Package   | Purpose                                |
-|-----------|----------------------------------------|
-| dash      | Web framework and interactive UI       |
-| plotly    | Scientific visualisation               |
-| numpy     | Numerical computation                  |
-| scipy     | KD-tree for convergence matching       |
-| kaleido   | Server-side PNG/PDF figure export      |
-| gunicorn  | Production WSGI server                 |
+| Package  | Purpose                           |
+| -------- | --------------------------------- |
+| dash     | Web framework and interactive UI  |
+| plotly   | Scientific visualisation          |
+| numpy    | Numerical computation             |
+| scipy    | KD-tree for convergence matching  |
+| kaleido  | Server-side PNG/PDF figure export |
+| gunicorn | Production WSGI server            |
 
 ## Convergence Algorithm
 
