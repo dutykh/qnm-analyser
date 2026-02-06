@@ -306,6 +306,7 @@ def generate_report_text(conv_data):
         f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         f"Tolerance: {tol_value:.1e}",
         f"Resolutions: {', '.join(str(n) for n in res_list)}",
+        f"Note: only Re(\u03c9) \u2265 0 shown (spectrum symmetric about imaginary axis)",
         "",
         "-" * 60,
         "Summary",
@@ -781,6 +782,10 @@ def update_plot(store_data, tol_units, legend_pos, theme, relayout_data):
         conv_re_arr, conv_im_arr = compute_converged(
             eigs_dict[highest], trees, others, tol_value
         )
+        # Keep only Re(ω) ≥ -tol (spectrum symmetric about imaginary axis)
+        nonneg = conv_re_arr >= -tol_value
+        conv_re_arr = conv_re_arr[nonneg]
+        conv_im_arr = conv_im_arr[nonneg]
         general, pure_imag, pure_real = classify_converged(
             conv_re_arr, conv_im_arr, tol_value
         )
@@ -1003,6 +1008,7 @@ def export_converged_qnms(n_clicks, conv_data):
     header = [
         f"# Converged QNMs (tolerance = {conv_data.get('tol_value', 1e-4):.1e})",
         f"# Resolutions: {', '.join(str(n) for n in conv_data.get('resolutions', []))}",
+        f"# Note: only Re(omega) >= 0 (spectrum symmetric about imaginary axis)",
         f"# {'Re(omega)':>26s}  {'Im(omega)':>26s}",
     ]
     data_lines = [
