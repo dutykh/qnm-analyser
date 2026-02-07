@@ -327,15 +327,28 @@ def generate_report_text(conv_data):
             tbl.append(f"  {row[0]:>26.16e}  {row[1]:>26.16e}")
         return tbl
 
+    def fmt_imag_table(arr):
+        """Format purely-imaginary QNMs with a Delta Im(omega) gap column."""
+        col_w = 26
+        tbl = [
+            f"  {'Re(omega)':>{col_w}s}  {'Im(omega)':>{col_w}s}  {'Delta Im(omega)':>{col_w}s}",
+            f"  {'\u2500' * col_w}  {'\u2500' * col_w}  {'\u2500' * col_w}",
+        ]
+        sorted_arr = arr[np.argsort(-arr[:, 1])]
+        for i, row in enumerate(sorted_arr):
+            if i == 0:
+                tbl.append(f"  {row[0]:>{col_w}.16e}  {row[1]:>{col_w}.16e}")
+            else:
+                gap = abs(sorted_arr[i - 1, 1] - row[1])
+                tbl.append(
+                    f"  {row[0]:>{col_w}.16e}  {row[1]:>{col_w}.16e}  {gap:>{col_w}.16e}"
+                )
+        return tbl
+
     for label, arr, sort_fn in [
         (
             "General QNMs (Re != 0, Im != 0)",
             general,
-            lambda a: np.argsort(-a[:, 1]),
-        ),
-        (
-            "Purely Imaginary QNMs (Re ~ 0)",
-            pure_imag,
             lambda a: np.argsort(-a[:, 1]),
         ),
         (
@@ -352,6 +365,16 @@ def generate_report_text(conv_data):
         else:
             lines.append("  (none)")
         lines.append("")
+
+    # Purely imaginary section with gap column
+    lines.append("-" * 60)
+    lines.append("Purely Imaginary QNMs (Re ~ 0)")
+    lines.append("-" * 60)
+    if len(pure_imag) > 0:
+        lines.extend(fmt_imag_table(pure_imag))
+    else:
+        lines.append("  (none)")
+    lines.append("")
 
     return "\n".join(lines) + "\n"
 
