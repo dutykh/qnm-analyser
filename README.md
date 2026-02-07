@@ -29,8 +29,12 @@ resolutions. It provides:
 - **Interactive plot** — Plotly-based scatter plot with zoom, pan, hover info,
   colorblind-safe palette (Wong 2011), and MathJax-rendered LaTeX labels
 - **Dark / light theme** — toggle persisted in local storage
-- **Export** — save the current view as high-resolution PNG or PDF, or
-  download a formatted text report of converged QNMs
+- **Symmetry filtering** — only Re(ω) ≥ 0 eigenvalues are shown, exploiting
+  the spectrum's symmetry about the imaginary axis
+- **Export** — save the current view as high-resolution PNG or PDF, download
+  a formatted text report of converged QNMs (with spectral gaps Δ Im(ω)
+  between consecutive purely imaginary modes), or export the raw converged
+  eigenvalues as a `.dat` file
 
 No uploaded data is stored on the server. All session state lives in the
 browser and is discarded when the tab is closed.
