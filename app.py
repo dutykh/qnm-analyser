@@ -33,7 +33,6 @@ from scipy.spatial import cKDTree
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_TOL = 1e-4
-MIN_TICKS_FOR_ZOOM = 5  # assumed major ticks for zoom-limit calculation
 INITIAL_SLOTS = 3
 MAX_SLOTS = 6
 
@@ -648,7 +647,6 @@ app.layout = html.Div(
         dcc.Store(id="theme-store", storage_type="local", data="light"),
         dcc.Store(id="convergence-store", storage_type="memory"),
         dcc.Store(id="slot-count-store", storage_type="session", data=INITIAL_SLOTS),
-        dcc.Store(id="zoom-min-span", storage_type="memory"),
         dcc.Download(id="report-download"),
         dcc.Download(id="image-download"),
         dcc.Download(id="qnm-export-download"),
@@ -774,7 +772,6 @@ def manage_data(
     Output("qnm-plot", "figure"),
     Output("convergence-info", "children"),
     Output("convergence-store", "data"),
-    Output("zoom-min-span", "data"),
     Input("data-store", "data"),
     Input("tol-input", "value"),
     Input("legend-pos", "value"),
@@ -784,7 +781,6 @@ def manage_data(
 def update_plot(store_data, tol_units, legend_pos, theme, relayout_data):
     """Rebuild the figure when data or controls change."""
     tol_value = (tol_units if tol_units and tol_units > 0 else 1.0) * 1e-4
-    min_span = 2 * MIN_TICKS_FOR_ZOOM * tol_value
     dark = theme == "dark"
 
     datasets = []
@@ -832,26 +828,24 @@ def update_plot(store_data, tol_units, legend_pos, theme, relayout_data):
     )
     fig.update_layout(legend=LEGEND_POSITIONS.get(legend_pos, {}))
 
-    # Preserve zoom/pan (clamped to tolerance-based minimum span)
+    # Preserve zoom/pan
     if relayout_data:
         if "xaxis.range[0]" in relayout_data:
-            x0 = relayout_data["xaxis.range[0]"]
-            x1 = relayout_data["xaxis.range[1]"]
-            if (x1 - x0) < min_span:
-                mid = (x0 + x1) / 2
-                x0 = mid - min_span / 2
-                x1 = mid + min_span / 2
-            fig.update_xaxes(range=[x0, x1])
+            fig.update_xaxes(
+                range=[
+                    relayout_data["xaxis.range[0]"],
+                    relayout_data["xaxis.range[1]"],
+                ]
+            )
         if "yaxis.range[0]" in relayout_data:
-            y0 = relayout_data["yaxis.range[0]"]
-            y1 = relayout_data["yaxis.range[1]"]
-            if (y1 - y0) < min_span:
-                mid = (y0 + y1) / 2
-                y0 = mid - min_span / 2
-                y1 = mid + min_span / 2
-            fig.update_yaxes(range=[y0, y1])
+            fig.update_yaxes(
+                range=[
+                    relayout_data["yaxis.range[0]"],
+                    relayout_data["yaxis.range[1]"],
+                ]
+            )
 
-    return fig, info_str, conv_data, min_span
+    return fig, info_str, conv_data
 
 
 @callback(
@@ -1091,65 +1085,6 @@ def export_image(png_clicks, pdf_clicks, current_fig, relayout_data):
     else:
         img_bytes = export_fig.to_image(format="pdf")
         return dcc.send_bytes(img_bytes, filename="qnm_complex_plane.pdf")
-
-
-# ---------------------------------------------------------------------------
-# Clientside callback: prevent zooming past tolerance resolution
-# ---------------------------------------------------------------------------
-app.clientside_callback(
-    """
-    function(relayoutData, currentFigure, minSpan) {
-        if (!currentFigure || !currentFigure.layout || !minSpan) {
-            return window.dash_clientside.no_update;
-        }
-        if (!relayoutData
-            || relayoutData['xaxis.autorange']
-            || relayoutData['yaxis.autorange']
-            || relayoutData['autosize']) {
-            return window.dash_clientside.no_update;
-        }
-
-        var needsClamp = false;
-        var newLayout = Object.assign({}, currentFigure.layout);
-
-        if (relayoutData['xaxis.range[0]'] !== undefined) {
-            var x0 = relayoutData['xaxis.range[0]'];
-            var x1 = relayoutData['xaxis.range[1]'];
-            if ((x1 - x0) < minSpan) {
-                var xMid = (x0 + x1) / 2;
-                newLayout.xaxis = Object.assign({}, newLayout.xaxis, {
-                    range: [xMid - minSpan / 2, xMid + minSpan / 2],
-                    autorange: false
-                });
-                needsClamp = true;
-            }
-        }
-
-        if (relayoutData['yaxis.range[0]'] !== undefined) {
-            var y0 = relayoutData['yaxis.range[0]'];
-            var y1 = relayoutData['yaxis.range[1]'];
-            if ((y1 - y0) < minSpan) {
-                var yMid = (y0 + y1) / 2;
-                newLayout.yaxis = Object.assign({}, newLayout.yaxis, {
-                    range: [yMid - minSpan / 2, yMid + minSpan / 2],
-                    autorange: false
-                });
-                needsClamp = true;
-            }
-        }
-
-        if (needsClamp) {
-            return Object.assign({}, currentFigure, {layout: newLayout});
-        }
-        return window.dash_clientside.no_update;
-    }
-    """,
-    Output("qnm-plot", "figure", allow_duplicate=True),
-    Input("qnm-plot", "relayoutData"),
-    State("qnm-plot", "figure"),
-    State("zoom-min-span", "data"),
-    prevent_initial_call=True,
-)
 
 
 # ---------------------------------------------------------------------------
