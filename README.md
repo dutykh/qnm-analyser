@@ -17,10 +17,13 @@ QNM Analyser is an interactive web dashboard for exploring convergence of
 quasi-normal mode (QNM) eigenvalues computed at different numerical
 resolutions. It provides:
 
-- **File upload** — drag-and-drop up to three eigenvalue files
+- **File upload** — drag-and-drop eigenvalue files in dynamic slots
+  (default 3, expandable up to 6 datasets)
   (two-column format: Re and Im parts of each eigenfrequency)
 - **Automatic resolution detection** — resolution *N* is inferred from the
   filename (e.g. `eigs_90.dat` yields *N* = 90), editable by the user
+- **Upload validation feedback** — invalid or unreadable files now surface a
+  visible error message in the UI (instead of failing silently)
 - **Convergence analysis** — identifies QNMs that appear at all uploaded
   resolutions within a user-controlled tolerance, using KD-tree
   nearest-neighbour matching
@@ -29,6 +32,8 @@ resolutions. It provides:
 - **Interactive plot** — Plotly-based scatter plot with zoom, pan, hover info,
   colorblind-safe palette (Wong 2011), and MathJax-rendered LaTeX labels
 - **Dark / light theme** — toggle persisted in local storage
+- **Session reset** — one-click reset clears uploaded datasets, restores
+  default controls, and resets plot zoom/pan for a fresh analysis session
 - **Symmetry filtering** — only Re(ω) ≥ 0 eigenvalues are shown, exploiting
   the spectrum's symmetry about the imaginary axis
 - **Export** — save the current view as high-resolution PNG or PDF, download
@@ -62,6 +67,12 @@ python app.py
 ```
 
 Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in a browser.
+
+## Tests
+
+```bash
+pytest -q
+```
 
 ## Deployment on Ubuntu VPS
 

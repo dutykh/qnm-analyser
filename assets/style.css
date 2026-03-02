@@ -80,6 +80,12 @@ a {
     color: #0072B2;
 }
 
+.light-theme .upload-feedback {
+    color: #8a1f1f;
+    background: #fff1f1;
+    border-color: #e7bcbc;
+}
+
 .light-theme .footer-text {
     color: #888;
 }
@@ -130,6 +136,17 @@ a {
 .light-theme .slot-btn:hover {
     background: #e0e0e0;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.light-theme .reset-btn {
+    background: #fff4f4;
+    border: 1px solid #d8a3a3;
+    color: #8a1f1f;
+}
+
+.light-theme .reset-btn:hover {
+    background: #ffe9e9;
+    box-shadow: 0 2px 6px rgba(138, 31, 31, 0.12);
 }
 
 .light-theme .inspect-panel {
@@ -225,6 +242,12 @@ a {
 
 .dark-theme .upload-zone a {
     color: #56B4E9;
+}
+
+.dark-theme .upload-feedback {
+    color: #f2c8c8;
+    background: #362727;
+    border-color: #7a4a4a;
 }
 
 .dark-theme .footer-text {
@@ -324,6 +347,17 @@ a {
 .dark-theme .slot-btn:hover {
     background: #444;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .reset-btn {
+    background: #3a2424;
+    border: 1px solid #7a4a4a;
+    color: #f2c8c8;
+}
+
+.dark-theme .reset-btn:hover {
+    background: #4a2d2d;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .dark-theme .inspect-panel {
@@ -454,6 +488,16 @@ a {
     flex-wrap: wrap;
 }
 
+.upload-feedback {
+    max-width: 980px;
+    margin: 0 auto 10px;
+    padding: 8px 12px;
+    border: 1px solid;
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+}
+
 .upload-slot {
     flex: 1;
     max-width: 280px;
@@ -533,6 +577,12 @@ a {
 }
 
 .report-btn {
+    padding: 8px 20px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.reset-btn {
     padding: 8px 20px;
     font-size: 14px;
     cursor: pointer;
