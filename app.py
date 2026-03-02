@@ -33,6 +33,8 @@ from scipy.spatial import cKDTree
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_TOL = 1e-4
+DEFAULT_TOL_UNITS = 1.0
+DEFAULT_LEGEND_POS = "Top-right"
 INITIAL_SLOTS = 3
 MAX_SLOTS = 6
 
@@ -164,6 +166,63 @@ def parse_upload(contents, filename):
         inferred_n = int(match.group(1))
 
     return re_vals, im_vals, inferred_n
+
+
+def normalise_store_slots(store_data, num_slots):
+    """Return a store dict with exactly *num_slots* entries in `slots`."""
+    store = store_data or {"slots": []}
+    slots = list(store.get("slots") or [])
+    while len(slots) < num_slots:
+        slots.append(None)
+    return {"slots": slots[:num_slots]}
+
+
+def apply_slot_action(
+    store, triggered, upload_contents, filenames, res_values,
+):
+    """Mutate store for one UI action and return (store, upload_error_message)."""
+    num_slots = len(upload_contents)
+    upload_error = None
+
+    if triggered == "btn-reset":
+        store["slots"] = [None] * num_slots
+        return store, upload_error
+
+    if not (triggered and isinstance(triggered, dict)):
+        return store, upload_error
+
+    idx = triggered["index"]
+    action = triggered["type"]
+    if idx >= num_slots:
+        return store, upload_error
+
+    if action == "clear":
+        store["slots"][idx] = None
+
+    elif action == "upload" and upload_contents[idx]:
+        try:
+            re_vals, im_vals, inferred_n = parse_upload(
+                upload_contents[idx], filenames[idx]
+            )
+            if not re_vals:
+                raise ValueError("no valid numeric (Re, Im) rows found")
+            n = inferred_n or 0
+            store["slots"][idx] = {
+                "filename": filenames[idx] or "unknown",
+                "resolution": n,
+                "re": re_vals,
+                "im": im_vals,
+            }
+        except Exception as exc:
+            store["slots"][idx] = None
+            file_label = filenames[idx] or f"slot {idx + 1}"
+            upload_error = f"Upload failed for {file_label}: {exc}"
+
+    elif action == "resolution":
+        if store["slots"][idx] is not None and res_values[idx] is not None:
+            store["slots"][idx]["resolution"] = int(res_values[idx])
+
+    return store, upload_error
 
 
 def compute_converged(ref_points, trees, other_keys, tol_value):
@@ -508,6 +567,11 @@ app.layout = html.Div(
             children=[_make_upload_slot(i) for i in range(INITIAL_SLOTS)],
             className="upload-panel",
         ),
+        html.Div(
+            id="upload-feedback",
+            className="upload-feedback",
+            style={"display": "none"},
+        ),
         # Plot with loading spinner
         html.Div(
             dcc.Loading(
@@ -603,6 +667,12 @@ app.layout = html.Div(
                     n_clicks=0,
                     style=btn_style,
                 ),
+                html.Button(
+                    "Reset",
+                    id="btn-reset",
+                    n_clicks=0,
+                    className="reset-btn",
+                ),
             ],
             className="controls-bar",
         ),
@@ -683,14 +753,17 @@ def toggle_theme(n_clicks, current_theme):
     Output("slot-count-store", "data"),
     Input("btn-add-slot", "n_clicks"),
     Input("btn-remove-slot", "n_clicks"),
+    Input("btn-reset", "n_clicks"),
     State("slot-count-store", "data"),
     prevent_initial_call=True,
 )
-def manage_slots(add_clicks, remove_clicks, current_count):
+def manage_slots(add_clicks, remove_clicks, reset_clicks, current_count):
     """Add or remove upload slots dynamically."""
     count = current_count or INITIAL_SLOTS
     triggered = ctx.triggered_id
-    if triggered == "btn-add-slot":
+    if triggered == "btn-reset":
+        count = INITIAL_SLOTS
+    elif triggered == "btn-add-slot":
         count = min(count + 1, MAX_SLOTS)
     elif triggered == "btn-remove-slot":
         count = max(count - 1, 1)
@@ -701,55 +774,31 @@ def manage_slots(add_clicks, remove_clicks, current_count):
     Output("data-store", "data"),
     Output({"type": "filename", "index": ALL}, "children"),
     Output({"type": "resolution", "index": ALL}, "value"),
+    Output("upload-feedback", "children"),
+    Output("upload-feedback", "style"),
     Input({"type": "upload", "index": ALL}, "contents"),
     Input({"type": "clear", "index": ALL}, "n_clicks"),
     Input({"type": "resolution", "index": ALL}, "value"),
     Input("slot-count-store", "data"),
+    Input("btn-reset", "n_clicks"),
     State({"type": "upload", "index": ALL}, "filename"),
     State("data-store", "data"),
     prevent_initial_call=True,
 )
 def manage_data(
-    upload_contents, clear_clicks, res_values, slot_count,
+    upload_contents, clear_clicks, res_values, slot_count, reset_clicks,
     filenames, store_data,
 ):
     """Handle uploads, clears, resolution edits, and slot count changes."""
     num_slots = len(upload_contents)
-    store = store_data or {"slots": []}
-    # Extend or shrink slots to match current slot count
-    while len(store["slots"]) < num_slots:
-        store["slots"].append(None)
-    store["slots"] = store["slots"][:num_slots]
-
-    triggered = ctx.triggered_id
-
-    if triggered and isinstance(triggered, dict):
-        idx = triggered["index"]
-        action = triggered["type"]
-
-        if action == "clear":
-            store["slots"][idx] = None
-
-        elif action == "upload" and upload_contents[idx]:
-            try:
-                re_vals, im_vals, inferred_n = parse_upload(
-                    upload_contents[idx], filenames[idx]
-                )
-                if not re_vals:
-                    raise ValueError("No valid data points")
-                n = inferred_n or 0
-                store["slots"][idx] = {
-                    "filename": filenames[idx] or "unknown",
-                    "resolution": n,
-                    "re": re_vals,
-                    "im": im_vals,
-                }
-            except Exception:
-                pass
-
-        elif action == "resolution":
-            if store["slots"][idx] is not None and res_values[idx] is not None:
-                store["slots"][idx]["resolution"] = int(res_values[idx])
+    store = normalise_store_slots(store_data, num_slots)
+    store, upload_error = apply_slot_action(
+        store=store,
+        triggered=ctx.triggered_id,
+        upload_contents=upload_contents,
+        filenames=filenames,
+        res_values=res_values,
+    )
 
     # Always rebuild labels/resolutions from the store (handles slot regeneration)
     fname_labels = [
@@ -765,7 +814,10 @@ def manage_data(
         for i in range(num_slots)
     ]
 
-    return store, fname_labels, res_out
+    feedback_children = upload_error if upload_error else ""
+    feedback_style = {"display": "block"} if upload_error else {"display": "none"}
+
+    return store, fname_labels, res_out, feedback_children, feedback_style
 
 
 @callback(
@@ -853,13 +905,16 @@ def update_plot(store_data, tol_units, legend_pos, theme, relayout_data):
     Output("tol-slider", "value"),
     Input("tol-input", "value"),
     Input("tol-slider", "value"),
+    Input("btn-reset", "n_clicks"),
     prevent_initial_call=True,
 )
-def sync_tol(input_val, slider_val):
+def sync_tol(input_val, slider_val, reset_clicks):
     """Keep tolerance input and slider in sync."""
     triggered = ctx.triggered_id
+    if triggered == "btn-reset":
+        return DEFAULT_TOL_UNITS, DEFAULT_TOL_UNITS
     if triggered == "tol-input":
-        val = input_val if input_val and input_val > 0 else 1.0
+        val = input_val if input_val and input_val > 0 else DEFAULT_TOL_UNITS
         return no_update, val
     if triggered == "tol-slider":
         return slider_val, no_update
@@ -867,14 +922,37 @@ def sync_tol(input_val, slider_val):
 
 
 @callback(
+    Output("legend-pos", "value"),
+    Input("btn-reset", "n_clicks"),
+    prevent_initial_call=True,
+)
+def reset_legend(reset_clicks):
+    """Restore legend position to its default."""
+    return DEFAULT_LEGEND_POS
+
+
+@callback(
+    Output("qnm-plot", "relayoutData"),
+    Input("btn-reset", "n_clicks"),
+    prevent_initial_call=True,
+)
+def reset_plot_view(reset_clicks):
+    """Clear any persisted zoom/pan state on reset."""
+    return {}
+
+
+@callback(
     Output("inspect-panel", "children"),
     Output("inspect-panel", "style"),
     Input("qnm-plot", "clickData"),
+    Input("btn-reset", "n_clicks"),
     State("convergence-store", "data"),
     prevent_initial_call=True,
 )
-def inspect_point(click_data, conv_data):
+def inspect_point(click_data, reset_clicks, conv_data):
     """Display details for a clicked data point."""
+    if ctx.triggered_id == "btn-reset":
+        return [], {"display": "none"}
     if not click_data or not click_data.get("points"):
         return no_update, no_update
 
