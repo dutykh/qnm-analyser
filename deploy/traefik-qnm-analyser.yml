@@ -1,42 +1,47 @@
 # QNM Analyser — Traefik dynamic configuration
 # Author: Dr. Denys Dutykh (https://www.denys-dutykh.com/)
 #
-# Drop into Traefik's file-provider directory (e.g. /etc/traefik/dynamic/) and
-# reload.  The app and the webhook both listen on loopback; Traefik is the only
-# public entry point.
+# Install:
+#   sudo ./deploy/install-traefik.sh
+# which copies this file to /etc/traefik/dynamic/qnm-analyser.yml
 #
-# Two routers deliberately share one service:
-#   qnm-anal          the Dash application  (NO long-lived cache headers)
-#   qnm-anal-assets   static assets only    (long-lived, immutable cache)
+# IMPORTANT: QNM routers must live ONLY in this file. The shared
+# /etc/traefik/dynamic/routes.yml must NOT define qnm-anal-* routers or
+# services, or Traefik keeps the old ones and skips the new services.
 #
-# Why the split: a cache middleware attached to the application router also
-# stamps Traefik's own 503 "no available server" page.  A visitor who arrives
-# during an outage then pins that error for the full max-age, and `immutable`
-# suppresses revalidation even on an ordinary reload, so the site stays broken
-# for them long after the backend is healthy.  Cache headers belong only on
-# fingerprinted asset paths.
+# Two routers share one service on purpose:
+#   qnm-anal-assets   static assets only   (long-lived immutable cache)
+#   qnm-anal          the Dash application (no-store — never cache HTML/API)
+#   qnm-anal-webhook  GitHub deploy hook   (no-store, tighter rate limit)
+#
+# Why the split: a long-lived Cache-Control middleware on the application
+# router also stamps Traefik's own 503 "no available server" page. A visitor
+# who arrives during an outage then pins that error for max-age, and
+# immutable suppresses revalidation even on a normal reload.
 
 http:
   routers:
-    # ---- static assets: safe to cache hard -------------------------------
+    # Static assets — safe to cache hard. Priority beats the app router.
+    # Rule MUST be a single line: Traefik's rule parser rejects newlines.
     qnm-anal-assets:
-      rule: >-
-        (Host(`qnm-anal.denys-dutykh.com`) || Host(`www.qnm-anal.denys-dutykh.com`))
-        && (PathPrefix(`/assets/`) || PathPrefix(`/_dash-component-suites/`)
-            || PathPrefix(`/_favicon.ico`))
+      rule: "(Host(`qnm-anal.denys-dutykh.com`) || Host(`www.qnm-anal.denys-dutykh.com`)) && (PathPrefix(`/assets/`) || PathPrefix(`/_dash-component-suites/`) || PathPrefix(`/_favicon.ico`))"
       priority: 100
-      entryPoints: [websecure]
+      entryPoints:
+        - websecure
       service: qnm-anal-service
-      middlewares: [qnm-security-headers, qnm-cache-static, qnm-compress]
+      middlewares:
+        - qnm-security-headers
+        - qnm-cache-static
+        - qnm-compress
       tls:
         certResolver: letsencrypt
 
-    # ---- the application: never cached -----------------------------------
+    # Application — never long-cache. Covers HTML, callbacks, health, uploads.
     qnm-anal:
-      rule: >-
-        Host(`qnm-anal.denys-dutykh.com`) || Host(`www.qnm-anal.denys-dutykh.com`)
+      rule: "Host(`qnm-anal.denys-dutykh.com`) || Host(`www.qnm-anal.denys-dutykh.com`)"
       priority: 10
-      entryPoints: [websecure]
+      entryPoints:
+        - websecure
       service: qnm-anal-service
       middlewares:
         - qnm-security-headers
@@ -47,15 +52,17 @@ http:
       tls:
         certResolver: letsencrypt
 
-    # ---- GitHub deploy webhook -------------------------------------------
+    # GitHub deploy webhook
     qnm-anal-webhook:
-      rule: >-
-        (Host(`qnm-anal.denys-dutykh.com`) || Host(`www.qnm-anal.denys-dutykh.com`))
-        && PathPrefix(`/webhook`)
+      rule: "(Host(`qnm-anal.denys-dutykh.com`) || Host(`www.qnm-anal.denys-dutykh.com`)) && PathPrefix(`/webhook`)"
       priority: 200
-      entryPoints: [websecure]
+      entryPoints:
+        - websecure
       service: qnm-webhook-service
-      middlewares: [qnm-security-headers, qnm-no-store, qnm-webhook-ratelimit]
+      middlewares:
+        - qnm-security-headers
+        - qnm-no-store
+        - qnm-webhook-ratelimit
       tls:
         certResolver: letsencrypt
 
@@ -64,11 +71,11 @@ http:
       loadBalancer:
         passHostHeader: true
         servers:
-          # Explicit IPv4. "localhost" resolves to [::1] first on this host,
-          # where gunicorn does not listen, and the backend is marked down.
+          # Explicit IPv4. "localhost" prefers [::1] on this host; gunicorn
+          # listens on IPv4 only, so Traefik would mark the backend down.
           - url: "http://127.0.0.1:8050"
         healthCheck:
-          path: /health          # cheap endpoint; does not render the Dash page
+          path: /health
           interval: 10s
           timeout: 3s
 
@@ -92,47 +99,24 @@ http:
         frameDeny: true
         referrerPolicy: strict-origin-when-cross-origin
         customResponseHeaders:
-          # Obsolete, removed from modern browsers, and historically a
-          # vulnerability source of its own. Explicitly off; the CSP is the
-          # real control.
           X-XSS-Protection: "0"
           Server: ""
           X-Powered-By: ""
-          # Verified against this app: the page loads no external scripts at
-          # all, and MathJax v3 (bundled by Dash and served from /_dash-
-          # component-suites/) typesets the axis labels without 'unsafe-eval'.
-          # 'unsafe-inline' is still required: Dash injects its bootstrap
-          # config as an inline <script>, and Plotly writes inline styles.
-          Content-Security-Policy: >-
-            default-src 'self';
-            script-src 'self' 'unsafe-inline';
-            style-src 'self' 'unsafe-inline';
-            img-src 'self' data: blob:;
-            font-src 'self' data:;
-            connect-src 'self';
-            worker-src 'self' blob:;
-            frame-ancestors 'none';
-            base-uri 'self';
-            form-action 'self';
-            object-src 'none'
-          Permissions-Policy: >-
-            geolocation=(), microphone=(), camera=(), payment=(), usb=(),
-            magnetometer=(), accelerometer=(), gyroscope=(), fullscreen=(self)
+          # App loads zero external scripts (MathJax v3 is bundled by Dash).
+          # unsafe-inline still required for Dash bootstrap + Plotly styles.
+          Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+          Permissions-Policy: "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), fullscreen=(self)"
 
-    # Applied ONLY to the asset router.
     qnm-cache-static:
       headers:
         customResponseHeaders:
           Cache-Control: "public, max-age=31536000, immutable"
 
-    # Applied to the application and the webhook.
     qnm-no-store:
       headers:
         customResponseHeaders:
           Cache-Control: "no-store, must-revalidate"
 
-    # Mirrors Flask's MAX_CONTENT_LENGTH (10 MB) in app.py, so an oversized
-    # upload is rejected at the edge instead of occupying a worker.
     qnm-body-limit:
       buffering:
         maxRequestBodyBytes: 10485760
