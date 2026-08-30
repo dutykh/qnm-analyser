@@ -1,0 +1,21 @@
+# QNM Analyser — project configuration
+# Author: Dr. Denys Dutykh
+#         Khalifa University of Science and Technology, Abu Dhabi, UAE
+#         https://www.denys-dutykh.com/
+
+[tool.pytest.ini_options]
+# Lets `from app import ...` resolve without a sys.path shim in conftest.py.
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "S"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]   # assert is the point of a test

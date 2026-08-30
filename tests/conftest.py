@@ -1,6 +1,4 @@
-from pathlib import Path
-import sys
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+# QNM Analyser — pytest configuration
+# Author: Dr. Denys Dutykh (https://www.denys-dutykh.com/)
+#
+# pythonpath is set in pyproject.toml; this file exists for shared fixtures.

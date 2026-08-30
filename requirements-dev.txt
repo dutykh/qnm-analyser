@@ -1,0 +1,7 @@
+# QNM Analyser — development and CI dependencies
+# Author: Dr. Denys Dutykh (https://www.denys-dutykh.com/)
+#
+# Install alongside the runtime pins:
+#   pip install -r requirements.txt -r requirements-dev.txt
+pytest==9.1.1
+pip-audit

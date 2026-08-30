@@ -207,3 +207,12 @@ marimo/_lsp/
 __marimo__/
 
 .tmp/
+
+# Core dumps and crash artefacts
+# A core dump is a full snapshot of the process address space: it contains the
+# environment block (secrets) and any in-flight request data. Never commit one.
+core
+core.*
+*.core
+vgcore.*
+*.dmp

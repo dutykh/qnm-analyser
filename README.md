@@ -1,63 +1,91 @@
+<!-- QNM Analyser
+     Author: Dr. Denys Dutykh
+             Khalifa University of Science and Technology, Abu Dhabi, UAE
+             https://www.denys-dutykh.com/ -->
+
 # QNM Analyser
 
 **Online tool to analyse quasi-normal modes in gravitational physics.**
 
-**Author:** Dr. Denys Dutykh — Khalifa University of Science and Technology,
-Abu Dhabi, UAE — [https://www.denys-dutykh.com/](https://www.denys-dutykh.com/)
+**Author:** Dr. Denys Dutykh, Khalifa University of Science and Technology,
+Abu Dhabi, UAE, [https://www.denys-dutykh.com/](https://www.denys-dutykh.com/)
 
 **Live instance:** [https://www.qnm-anal.denys-dutykh.com/](https://www.qnm-anal.denys-dutykh.com/)
 
 <p align="center">
-  <img src="assets/QNM-analyser.png" alt="QNM Analyser — Black holes, wormholes, quasi-normal modes and ringdown spectra" width="700">
+  <img src="assets/QNM-analyser.webp" alt="QNM Analyser: black holes, wormholes, quasi-normal modes and ringdown spectra" width="700">
 </p>
 
 ## Overview
 
-QNM Analyser is an interactive web dashboard for exploring convergence of
+QNM Analyser is an interactive web dashboard for exploring the convergence of
 quasi-normal mode (QNM) eigenvalues computed at different numerical
-resolutions. It provides:
+resolutions. A mode that is genuine appears at every resolution; a mode that is
+numerical noise does not. The tool makes that distinction visible.
 
-- **File upload** — drag-and-drop eigenvalue files in dynamic slots
-  (default 3, expandable up to 6 datasets)
-  (two-column format: Re and Im parts of each eigenfrequency)
-- **Automatic resolution detection** — resolution *N* is inferred from the
-  filename (e.g. `eigs_90.dat` yields *N* = 90), editable by the user
-- **Upload validation feedback** — invalid or unreadable files now surface a
-  visible error message in the UI (instead of failing silently)
-- **Convergence analysis** — identifies QNMs that appear at all uploaded
-  resolutions within a user-controlled tolerance, using KD-tree
-  nearest-neighbour matching
-- **Classification** — converged QNMs are categorised as general, purely
-  imaginary, or purely real
-- **Interactive plot** — Plotly-based scatter plot with zoom, pan, hover info,
-  colorblind-safe palette (Wong 2011), and MathJax-rendered LaTeX labels
-- **Dark / light theme** — toggle persisted in local storage
-- **Session reset** — one-click reset clears uploaded datasets, restores
-  default controls, and resets plot zoom/pan for a fresh analysis session
-- **Symmetry filtering** — only Re(ω) ≥ 0 eigenvalues are shown, exploiting
-  the spectrum's symmetry about the imaginary axis
-- **Export** — save the current view as high-resolution PNG or PDF, download
-  a formatted text report of converged QNMs (with spectral gaps Δ Im(ω)
-  between consecutive purely imaginary modes), or export the raw converged
-  eigenvalues as a `.dat` file
+- **File upload**: drag-and-drop eigenvalue files into dynamic slots (3 by
+  default, expandable to 6), each holding two columns, the real and imaginary
+  parts of the eigenfrequencies.
+- **Automatic resolution detection**: the resolution `N` is read from the
+  filename (`eigs_90.dat` gives `N = 90`, and `eigs_2024_90.dat` also gives
+  `N = 90`, since the last group of digits is used). If the filename has no
+  digits the tool asks you to type `N` rather than guessing.
+- **Upload validation feedback**: unreadable or invalid files produce a visible
+  message instead of failing silently.
+- **Convergence analysis**: identifies the QNMs present at every uploaded
+  resolution within a user-controlled tolerance, using KD-tree
+  nearest-neighbour matching.
+- **Classification**: converged QNMs are sorted into general, purely imaginary,
+  and purely real.
+- **Interactive plot**: Plotly scatter plot in the complex plane with zoom, pan,
+  hover readout, a colourblind-safe palette (Wong 2011), and MathJax-typeset
+  axis labels.
+- **Click to inspect**: click any converged mode to see its value and the
+  spread across resolutions.
+- **Dark and light themes**: the choice is remembered in local storage.
+- **Session reset**: one click clears the datasets, restores the default
+  controls, and resets the plot view.
+- **Symmetry filtering**: only `Re(ω) ⩾ 0` is shown, since the spectrum is
+  symmetric about the imaginary axis.
+- **Export**: save the current view as a high-resolution PNG or a PDF, download
+  a formatted text report of the converged QNMs (including the spectral gaps
+  `Δ Im(ω)` between consecutive purely imaginary modes), or write the converged
+  eigenvalues out as a `.dat` file.
 
 No uploaded data is stored on the server. All session state lives in the
 browser and is discarded when the tab is closed.
 
-## Data Format
+## Data format
 
-Each file should contain two whitespace-separated columns:
+Each file holds two whitespace-separated columns:
 
-```
+```text
 Re(omega_1)  Im(omega_1)
 Re(omega_2)  Im(omega_2)
 ...
 ```
 
-Lines starting with `#` and blank lines are ignored. Values that are `NaN` or
-`Inf` are silently skipped.
+Lines beginning with `#` and blank lines are ignored. Rows that are `NaN` or
+`Inf` are skipped. A single file may carry at most 100 000 eigenvalues.
 
-## Running Locally
+## Convergence algorithm
+
+1. Sort the uploaded datasets by resolution.
+2. The highest resolution becomes the reference set.
+3. For each eigenvalue in the reference set, query the KD-tree of every lower
+   resolution. If the nearest neighbour lies within the tolerance for **every**
+   lower resolution, that eigenvalue is converged.
+4. Converged QNMs are then classified, with `tol` the chosen tolerance:
+
+```text
+   general           |Re(ω)| ⩾ tol   and   |Im(ω)| ⩾ tol
+   purely imaginary  |Re(ω)| < tol   and   |Im(ω)| ⩾ tol
+   purely real       |Im(ω)| < tol
+```
+
+The tolerance is set in the interface in units of `10⁻⁴`.
+
+## Running locally
 
 ```bash
 python3 -m venv venv
@@ -66,62 +94,97 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open [http://127.0.0.1:8050](http://127.0.0.1:8050) in a browser.
+Open [http://127.0.0.1:8050](http://127.0.0.1:8050).
+
+To enable the Werkzeug debugger while developing, set `DASH_DEBUG=1`. Leave it
+unset otherwise: the debugger exposes an interactive console.
 
 ## Tests
 
 ```bash
-pytest -q
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
 ```
 
-## Deployment on Ubuntu VPS
+The suite covers the upload parser, the convergence and classification
+routines, the shared figure builder (including rejection of malformed zoom
+ranges sent by the browser), the slot state machine, and the webhook signature
+check.
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step instructions covering:
+To check the pinned dependencies for known vulnerabilities:
 
-- Gunicorn WSGI server
-- Nginx reverse proxy with HTTPS (Let's Encrypt)
-- systemd service for automatic startup
-
-## Project Structure
-
+```bash
+pip-audit -r requirements.txt
 ```
+
+## Deployment
+
+The live instance runs on an Ubuntu VPS under PM2, behind Traefik, and updates
+itself from a GitHub webhook. See [DEPLOYMENT.md](DEPLOYMENT.md) for the full
+guide, including the Traefik router and middleware configuration, operations
+commands, and a troubleshooting runbook.
+
+## Project structure
+
+```text
 qnm-analyser/
-├── app.py                         # Main Dash application
-├── requirements.txt               # Python dependencies
-├── gunicorn_conf.py               # Gunicorn configuration
+├── app.py                          # Dash application: layout, callbacks, analysis
+├── webhook.py                      # GitHub deploy webhook receiver
+├── gunicorn_conf.py                # Gunicorn settings (env-overridable)
+├── ecosystem.config.js             # PM2 process definitions for app and webhook
+├── start.sh                        # PM2 entry point for the application
+├── webhook_start.sh                # PM2 entry point for the webhook
+├── deploy.sh                       # Pull, install, restart, health-check
+├── requirements.txt                # Runtime dependencies (exact pins)
+├── requirements-dev.txt            # Test and audit tooling
+├── pyproject.toml                  # pytest and ruff configuration
+├── .env.example                    # Environment template
+├── package.json                    # Version stamp shown in PM2 status
 ├── assets/
-│   └── style.css                  # Light/dark theme CSS
+│   ├── style.css                   # Light and dark theme styles
+│   └── QNM-analyser.webp           # Banner image used in this README
 ├── deploy/
-│   ├── qnm-analyser.service       # systemd unit file
-│   └── nginx-qnm-analyser.conf    # Nginx site configuration
-├── DEPLOYMENT.md                  # Deployment guide
-├── README.md                      # This file
-└── LICENSE                        # LGPL v2.1
+│   └── traefik-qnm-analyser.yml    # Traefik routers, service, middlewares
+├── tests/
+│   ├── test_analysis.py            # Parser, convergence, figure builder
+│   ├── test_slot_actions.py        # Upload/reset state machine
+│   └── test_webhook_security.py    # Signature verification and deploy gating
+├── DEPLOYMENT.md                   # Deployment and operations guide
+├── README.md                       # This file
+└── LICENSE                         # LGPL v2.1
 ```
 
 ## Dependencies
 
-| Package  | Purpose                           |
-| -------- | --------------------------------- |
-| dash     | Web framework and interactive UI  |
-| plotly   | Scientific visualisation          |
-| numpy    | Numerical computation             |
-| scipy    | KD-tree for convergence matching  |
-| kaleido  | Server-side PNG/PDF figure export |
-| gunicorn | Production WSGI server            |
+| Package  | Purpose                             |
+| -------- | ----------------------------------- |
+| dash     | Web framework and interactive UI     |
+| plotly   | Scientific visualisation            |
+| numpy    | Numerical computation               |
+| scipy    | KD-tree for convergence matching     |
+| kaleido  | Server-side PNG and PDF figure export |
+| gunicorn | Production WSGI server              |
+| flask    | Web framework behind the webhook    |
 
-## Convergence Algorithm
+Versions are pinned exactly in `requirements.txt`. The application loads no
+third-party scripts: MathJax is served from the application's own origin, so
+the page satisfies a `script-src 'self'` content-security policy.
 
-1. Sort uploaded datasets by resolution.
-2. The highest resolution serves as the reference set.
-3. For each eigenvalue in the reference set, query the KD-trees of all lower
-   resolutions. If the nearest neighbour distance is within the tolerance for
-   **every** lower resolution, the eigenvalue is classified as converged.
-4. Converged QNMs are further categorised:
-   - **General** — both Re and Im parts are non-negligible
-   - **Purely imaginary** — |Re| < tolerance
-   - **Purely real** — |Im| < tolerance
+## Security
+
+- Uploads are parsed as plain text only. Nothing is deserialised, evaluated, or
+  written to disk.
+- Upload size is capped at 10 MB by the application and again at the reverse
+  proxy, and at 100 000 eigenvalues per file.
+- Image export renders a figure rebuilt on the server from the uploaded
+  numbers. Figure JSON from the browser is never handed to the rendering
+  engine.
+- The deploy webhook verifies an HMAC-SHA256 signature in constant time and
+  fails closed when no secret is configured.
+
+Please report security issues privately by email rather than opening a public
+issue.
 
 ## Licence
 
-LGPL v2.1 — see [LICENSE](LICENSE).
+LGPL v2.1, see [LICENSE](LICENSE).

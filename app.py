@@ -11,6 +11,9 @@ Author: Dr. Denys Dutykh
 import re as _re
 import base64
 import datetime
+import logging
+import math
+import os
 
 import numpy as np
 import plotly.graph_objects as go
@@ -32,11 +35,27 @@ from scipy.spatial import cKDTree
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
+logger = logging.getLogger(__name__)
+
 DEFAULT_TOL = 1e-4
 DEFAULT_TOL_UNITS = 1.0
 DEFAULT_LEGEND_POS = "Top-right"
 INITIAL_SLOTS = 3
 MAX_SLOTS = 6
+
+# Upper bound on eigenvalues accepted from one file.  MAX_CONTENT_LENGTH caps
+# the request body but not the cost of the KD-tree work that follows.
+MAX_ROWS_PER_FILE = 100_000
+
+# Axis titles used for PNG/PDF export.  The on-screen figure uses LaTeX that
+# MathJax typesets in the browser; Kaleido has no MathJax, so it would write
+# the markup out literally.
+EXPORT_AXIS_TITLES = {"x": "Re(ω)", "y": "Im(ω)"}
+
+# Box-drawing rule used in the text report.  Kept as a module constant so
+# that the f-strings below hold no backslash escapes, which would require
+# Python 3.12 (PEP 701).
+_RULE = "\u2500"
 
 # Wong 2011 colorblind-safe palette
 COLORS = ["#0072B2", "#D55E00", "#009E73", "#E69F00", "#CC79A7", "#56B4E9"]
@@ -141,7 +160,12 @@ LAYOUT_DARK = dict(
 
 
 def parse_upload(contents, filename):
-    """Decode an uploaded file and return (re_list, im_list, inferred_N)."""
+    """Decode an uploaded file and return (re_list, im_list, inferred_N).
+
+    Raises ValueError if the file carries more than MAX_ROWS_PER_FILE
+    eigenvalues.  *inferred_N* is None when the filename holds no digits, so
+    that the caller can ask the user for a resolution rather than guessing.
+    """
     _, content_string = contents.split(",", 1)
     decoded = base64.b64decode(content_string).decode("utf-8")
 
@@ -159,11 +183,17 @@ def parse_upload(contents, filename):
                     im_vals.append(i)
             except ValueError:
                 continue
+        if len(re_vals) > MAX_ROWS_PER_FILE:
+            raise ValueError(
+                f"more than {MAX_ROWS_PER_FILE:,} eigenvalues; "
+                "please coarsen the file before uploading"
+            )
 
+    # Take the LAST run of digits: "eigs_2024_90.dat" means N = 90, not 2024.
     inferred_n = None
-    match = _re.search(r"(\d+)", filename or "")
-    if match:
-        inferred_n = int(match.group(1))
+    matches = _re.findall(r"(\d+)", filename or "")
+    if matches:
+        inferred_n = int(matches[-1])
 
     return re_vals, im_vals, inferred_n
 
@@ -191,9 +221,13 @@ def apply_slot_action(
     if not (triggered and isinstance(triggered, dict)):
         return store, upload_error
 
-    idx = triggered["index"]
-    action = triggered["type"]
-    if idx >= num_slots:
+    idx = triggered.get("index")
+    action = triggered.get("type")
+    # The pattern-matching id round-trips through the browser, so treat it as
+    # untrusted: a negative index would otherwise address a slot from the end.
+    if not isinstance(idx, int) or isinstance(idx, bool):
+        return store, upload_error
+    if not 0 <= idx < num_slots:
         return store, upload_error
 
     if action == "clear":
@@ -206,13 +240,18 @@ def apply_slot_action(
             )
             if not re_vals:
                 raise ValueError("no valid numeric (Re, Im) rows found")
-            n = inferred_n or 0
             store["slots"][idx] = {
                 "filename": filenames[idx] or "unknown",
-                "resolution": n,
+                "resolution": inferred_n,
                 "re": re_vals,
                 "im": im_vals,
             }
+            if inferred_n is None:
+                file_label = filenames[idx] or f"slot {idx + 1}"
+                upload_error = (
+                    f"Could not read a resolution from {file_label}: "
+                    "please type N for this dataset."
+                )
         except Exception as exc:
             store["slots"][idx] = None
             file_label = filenames[idx] or f"slot {idx + 1}"
@@ -220,26 +259,31 @@ def apply_slot_action(
 
     elif action == "resolution":
         if store["slots"][idx] is not None and res_values[idx] is not None:
-            store["slots"][idx]["resolution"] = int(res_values[idx])
+            try:
+                store["slots"][idx]["resolution"] = int(res_values[idx])
+            except (TypeError, ValueError):
+                pass
 
     return store, upload_error
 
 
 def compute_converged(ref_points, trees, other_keys, tol_value):
-    """Find QNMs in *ref_points* present in ALL other resolutions within *tol_value*."""
-    conv_re, conv_im = [], []
-    for i in range(len(ref_points)):
-        point = ref_points[i]
-        found = True
-        for n in other_keys:
-            dist, _ = trees[n].query(point)
-            if dist > tol_value:
-                found = False
-                break
-        if found:
-            conv_re.append(point[0])
-            conv_im.append(point[1])
-    return np.asarray(conv_re), np.asarray(conv_im)
+    """Find QNMs in *ref_points* present in ALL other resolutions within *tol_value*.
+
+    One vectorised KD-tree query per lower resolution, rather than one query per
+    point per resolution: the per-point loop is what allowed a large upload to
+    hold a worker past the gunicorn timeout.
+    """
+    ref_points = np.asarray(ref_points)
+    if len(ref_points) == 0:
+        return np.empty(0), np.empty(0)
+
+    mask = np.ones(len(ref_points), dtype=bool)
+    for n in other_keys:
+        dist, _ = trees[n].query(ref_points)
+        mask &= dist <= tol_value
+
+    return ref_points[mask, 0], ref_points[mask, 1]
 
 
 def classify_converged(conv_re, conv_im, tol_value):
@@ -305,19 +349,6 @@ def build_figure(datasets, tol_value, dark=False, conv_re=None, conv_im=None):
         )
 
     info_str = ""
-    # Use pre-computed convergence if available, else compute internally
-    if conv_re is None and num >= 2:
-        eigs_dict = {}
-        for ds in sorted_ds:
-            eigs_dict[ds["resolution"]] = np.column_stack([ds["re"], ds["im"]])
-        res_list = sorted(eigs_dict.keys())
-        highest = res_list[-1]
-        others = res_list[:-1]
-        trees = {n: cKDTree(eigs_dict[n]) for n in others}
-        conv_re, conv_im = compute_converged(
-            eigs_dict[highest], trees, others, tol_value
-        )
-
     if conv_re is not None and len(conv_re) > 0:
         fig.add_trace(
             go.Scatter(
@@ -365,7 +396,8 @@ def generate_report_text(conv_data):
         f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         f"Tolerance: {tol_value:.1e}",
         f"Resolutions: {', '.join(str(n) for n in res_list)}",
-        f"Note: only Re(\u03c9) \u2265 0 shown (spectrum symmetric about imaginary axis)",
+        "Note: only Re(\u03c9) \u2265 0 shown "
+        "(spectrum symmetric about imaginary axis)",
         "",
         "-" * 60,
         "Summary",
@@ -380,7 +412,7 @@ def generate_report_text(conv_data):
     def fmt_table(arr):
         tbl = [
             f"  {'Re(omega)':>26s}  {'Im(omega)':>26s}",
-            f"  {'\u2500' * 26}  {'\u2500' * 26}",
+            f"  {_RULE * 26}  {_RULE * 26}",
         ]
         for row in arr:
             tbl.append(f"  {row[0]:>26.16e}  {row[1]:>26.16e}")
@@ -391,7 +423,7 @@ def generate_report_text(conv_data):
         col_w = 26
         tbl = [
             f"  {'Re(omega)':>{col_w}s}  {'Im(omega)':>{col_w}s}  {'Delta Im(omega)':>{col_w}s}",
-            f"  {'\u2500' * col_w}  {'\u2500' * col_w}  {'\u2500' * col_w}",
+            f"  {_RULE * col_w}  {_RULE * col_w}  {_RULE * col_w}",
         ]
         sorted_arr = arr[np.argsort(-arr[:, 1])]
         for i, row in enumerate(sorted_arr):
@@ -441,22 +473,18 @@ def generate_report_text(conv_data):
 # ---------------------------------------------------------------------------
 # Dash application
 # ---------------------------------------------------------------------------
-app = Dash(
-    __name__,
-    external_scripts=[
-        {
-            "src": (
-                "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js"
-                "?config=TeX-AMS-MML_SVG"
-            ),
-            "integrity": "sha512-M36RUChWzAh1veeenRZFql7HydLEnkYmoloiCvVrhz402UZgKI93qkV7SsaxtVKdN95Wzajh39ysrXCq34NTsg==",
-            "crossorigin": "anonymous",
-        }
-    ],
-    title="QNM Analyser",
-)
+# No external_scripts: dcc.Graph(mathjax=True) already serves MathJax v3 from
+# the app's own /_dash-component-suites/ path, so nothing is fetched from a CDN
+# and the page satisfies a script-src 'self' policy.
+app = Dash(__name__, title="QNM Analyser")
 server = app.server  # entry-point for gunicorn: app:server
 server.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
+
+
+@server.route("/health")
+def health():
+    """Cheap liveness probe for the reverse proxy."""
+    return "OK", 200, {"Cache-Control": "no-store"}
 
 
 def _make_upload_slot(i):
@@ -820,25 +848,42 @@ def manage_data(
     return store, fname_labels, res_out, feedback_children, feedback_style
 
 
-@callback(
-    Output("qnm-plot", "figure"),
-    Output("convergence-info", "children"),
-    Output("convergence-store", "data"),
-    Input("data-store", "data"),
-    Input("tol-input", "value"),
-    Input("legend-pos", "value"),
-    Input("theme-store", "data"),
-    State("qnm-plot", "relayoutData"),
-)
-def update_plot(store_data, tol_units, legend_pos, theme, relayout_data):
-    """Rebuild the figure when data or controls change."""
+def _apply_relayout_ranges(fig, relayout_data):
+    """Re-apply the client's zoom/pan window, ignoring anything non-numeric.
+
+    *relayout_data* arrives from the browser, so every value is validated as a
+    finite float before it reaches the figure.
+    """
+    if not relayout_data:
+        return
+
+    for axis, update in (("xaxis", fig.update_xaxes), ("yaxis", fig.update_yaxes)):
+        lo_key, hi_key = f"{axis}.range[0]", f"{axis}.range[1]"
+        if lo_key not in relayout_data or hi_key not in relayout_data:
+            continue
+        try:
+            lo = float(relayout_data[lo_key])
+            hi = float(relayout_data[hi_key])
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(lo) and math.isfinite(hi):
+            update(range=[lo, hi])
+
+
+def build_plot(store_data, tol_units, legend_pos, theme, relayout_data):
+    """Build the figure, info string and convergence payload from stored data.
+
+    Shared by the plot callback and the image-export callback so that both
+    render a figure derived from the numeric datasets, never from figure JSON
+    supplied by the client.
+    """
     tol_value = (tol_units if tol_units and tol_units > 0 else 1.0) * 1e-4
     dark = theme == "dark"
 
     datasets = []
     if store_data and store_data.get("slots"):
         for slot in store_data["slots"]:
-            if slot and slot.get("re") and slot.get("resolution"):
+            if slot and slot.get("re") and slot.get("resolution") is not None:
                 datasets.append(slot)
 
     # Compute convergence once at callback level
@@ -879,25 +924,24 @@ def update_plot(store_data, tol_units, legend_pos, theme, relayout_data):
         conv_re=conv_re_arr, conv_im=conv_im_arr,
     )
     fig.update_layout(legend=LEGEND_POSITIONS.get(legend_pos, {}))
-
-    # Preserve zoom/pan
-    if relayout_data:
-        if "xaxis.range[0]" in relayout_data:
-            fig.update_xaxes(
-                range=[
-                    relayout_data["xaxis.range[0]"],
-                    relayout_data["xaxis.range[1]"],
-                ]
-            )
-        if "yaxis.range[0]" in relayout_data:
-            fig.update_yaxes(
-                range=[
-                    relayout_data["yaxis.range[0]"],
-                    relayout_data["yaxis.range[1]"],
-                ]
-            )
+    _apply_relayout_ranges(fig, relayout_data)
 
     return fig, info_str, conv_data
+
+
+@callback(
+    Output("qnm-plot", "figure"),
+    Output("convergence-info", "children"),
+    Output("convergence-store", "data"),
+    Input("data-store", "data"),
+    Input("tol-input", "value"),
+    Input("legend-pos", "value"),
+    Input("theme-store", "data"),
+    State("qnm-plot", "relayoutData"),
+)
+def update_plot(store_data, tol_units, legend_pos, theme, relayout_data):
+    """Rebuild the figure when data or controls change."""
+    return build_plot(store_data, tol_units, legend_pos, theme, relayout_data)
 
 
 @callback(
@@ -965,7 +1009,7 @@ def inspect_point(click_data, reset_clicks, conv_data):
     is_converged = False
     if conv_data and conv_data.get("conv_re"):
         tol = conv_data.get("tol_value", 1e-4)
-        for cr, ci in zip(conv_data["conv_re"], conv_data["conv_im"]):
+        for cr, ci in zip(conv_data["conv_re"], conv_data["conv_im"], strict=False):
             if abs(cr - re_val) < tol and abs(ci - im_val) < tol:
                 is_converged = True
                 break
@@ -1109,12 +1153,12 @@ def export_converged_qnms(n_clicks, conv_data):
     header = [
         f"# Converged QNMs (tolerance = {conv_data.get('tol_value', 1e-4):.1e})",
         f"# Resolutions: {', '.join(str(n) for n in conv_data.get('resolutions', []))}",
-        f"# Note: only Re(omega) >= 0 (spectrum symmetric about imaginary axis)",
+        "# Note: only Re(omega) >= 0 (spectrum symmetric about imaginary axis)",
         f"# {'Re(omega)':>26s}  {'Im(omega)':>26s}",
     ]
     data_lines = [
         f"{r:>28.16e}  {i:>28.16e}"
-        for r, i in zip(conv_data["conv_re"], conv_data["conv_im"])
+        for r, i in zip(conv_data["conv_re"], conv_data["conv_im"], strict=False)
     ]
     content = "\n".join(header + data_lines) + "\n"
     return dcc.send_string(content, filename="converged_qnms.dat")
@@ -1124,49 +1168,54 @@ def export_converged_qnms(n_clicks, conv_data):
     Output("image-download", "data"),
     Input("btn-png", "n_clicks"),
     Input("btn-pdf", "n_clicks"),
-    State("qnm-plot", "figure"),
+    State("data-store", "data"),
+    State("tol-input", "value"),
+    State("legend-pos", "value"),
+    State("theme-store", "data"),
     State("qnm-plot", "relayoutData"),
     prevent_initial_call=True,
 )
-def export_image(png_clicks, pdf_clicks, current_fig, relayout_data):
-    """Export the current plot as PNG or PDF and send as a browser download."""
-    if current_fig is None:
-        return no_update
+def export_image(
+    png_clicks, pdf_clicks, store_data, tol_units, legend_pos, theme, relayout_data
+):
+    """Export the current plot as PNG or PDF and send as a browser download.
 
+    The figure is rebuilt server-side from the stored numeric datasets rather
+    than taken from the browser.  Kaleido renders through a headless browser,
+    so handing it client-supplied figure JSON would let a crafted request point
+    an image source at an internal address and have the server fetch it.
+    """
     triggered = ctx.triggered_id
     if triggered not in ("btn-png", "btn-pdf"):
         return no_update
 
-    export_fig = go.Figure(current_fig)
+    export_fig, _, _ = build_plot(
+        store_data, tol_units, legend_pos, theme, relayout_data
+    )
     export_fig.update_layout(title_text="")
 
-    # Apply current zoom/pan
-    if relayout_data:
-        if "xaxis.range[0]" in relayout_data:
-            export_fig.update_xaxes(
-                range=[
-                    relayout_data["xaxis.range[0]"],
-                    relayout_data["xaxis.range[1]"],
-                ]
-            )
-        if "yaxis.range[0]" in relayout_data:
-            export_fig.update_yaxes(
-                range=[
-                    relayout_data["yaxis.range[0]"],
-                    relayout_data["yaxis.range[1]"],
-                ]
-            )
+    # Kaleido renders through a headless browser but does not run MathJax, so
+    # the LaTeX axis titles would appear verbatim in the file.  Substitute the
+    # Unicode equivalents for export only; the on-screen figure keeps MathJax.
+    export_fig.update_xaxes(title_text=EXPORT_AXIS_TITLES["x"])
+    export_fig.update_yaxes(title_text=EXPORT_AXIS_TITLES["y"])
 
-    if triggered == "btn-png":
-        img_bytes = export_fig.to_image(format="png", scale=3)
-        return dcc.send_bytes(img_bytes, filename="qnm_complex_plane.png")
-    else:
+    try:
+        if triggered == "btn-png":
+            img_bytes = export_fig.to_image(format="png", scale=3)
+            return dcc.send_bytes(img_bytes, filename="qnm_complex_plane.png")
         img_bytes = export_fig.to_image(format="pdf")
         return dcc.send_bytes(img_bytes, filename="qnm_complex_plane.pdf")
+    except Exception:
+        # Kaleido needs a working headless browser; a missing or broken one
+        # must not take the worker down with it.
+        logger.exception("Image export failed")
+        return no_update
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    # The Werkzeug debugger exposes an interactive console; keep it opt-in.
+    app.run(debug=os.environ.get("DASH_DEBUG") == "1")

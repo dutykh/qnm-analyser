@@ -1,8 +1,15 @@
 # QNM Analyser — Python dependencies
 # Author: Dr. Denys Dutykh (https://www.denys-dutykh.com/)
-dash==4.0.0
-plotly==6.5.2
-numpy==2.3.1
-scipy==1.16.0
-kaleido==1.2.0
-gunicorn==25.0.1
+#
+# Pins are exact so that a deploy is reproducible.  Refresh with:
+#   pip install --upgrade dash plotly numpy scipy kaleido gunicorn flask
+#   pip freeze | grep -iE '^(dash|plotly|numpy|scipy|kaleido|gunicorn|flask)=='
+dash==4.4.1
+plotly==7.0.0
+numpy==2.5.2
+scipy==1.18.1
+kaleido==1.3.0
+gunicorn==26.2.0
+# Imported directly by webhook.py.  Dash pulls Flask in transitively, but the
+# webhook must not depend on that happening to remain true.
+flask==3.1.3
