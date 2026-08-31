@@ -1,6 +1,6 @@
 {
   "name": "qnm-analyser",
-  "version": "0.0.0-20260830.d84c8b1",
+  "version": "0.0.0-20260831.a71c57f",
   "private": true,
   "description": "Metadata file to expose version in PM2 status"
 }
