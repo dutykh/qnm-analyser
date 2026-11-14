@@ -1,0 +1,35 @@
+# Dr. Denys Dutykh (Mathematics Department, Khalifa University of Science and Technology, Abu Dhabi, UAE)
+#
+# Citation metadata in Citation File Format 1.2.0, from which GitHub draws its button
+# "Cite this repository".
+
+cff-version: 1.2.0
+message: "If you use QNM Analyser in your work, please cite it as given below."
+title: "qnm-analyser: the quasinormal modes that agree across numerical resolutions"
+abstract: >-
+  QNM Analyser is an interactive web application, written in Python with Dash and Plotly, that
+  tells genuine quasinormal modes from numerical noise in eigenvalues computed at several
+  resolutions. It matches the roots of the highest resolution with those of the lower ones by
+  nearest-neighbour search in KD-trees, keeps those that agree within a chosen tolerance,
+  classifies them as general, purely imaginary or purely real, and draws and exports them.
+type: software
+version: "1.0.0"
+date-released: "2026-11-15"
+license: LGPL-2.1-only
+repository-code: "https://github.com/dutykh/qnm-analyser"
+keywords:
+  - quasinormal-modes
+  - black-holes
+  - general-relativity
+  - data-visualization
+  - dashboard
+  - web-app
+  - plotly
+  - plotly-dash
+  - flask
+  - python
+authors:
+  - family-names: Dutykh
+    given-names: Denys
+    affiliation: "Mathematics Department, Khalifa University of Science and Technology, Abu Dhabi, United Arab Emirates"
+    orcid: "https://orcid.org/0000-0001-5247-2788"
