@@ -5,7 +5,7 @@
 # Author: Dr. Denys Dutykh (https://www.denys-dutykh.com/)
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/home/dds/www/qnm-analyser}"
+APP_DIR="${APP_DIR:-$HOME/www/qnm-analyser}"
 VENV_DIR="${VENV_DIR:-$APP_DIR/venv}"
 GIT_REMOTE="${GIT_REMOTE:-origin}"
 GIT_BRANCH="${GIT_BRANCH:-main}"

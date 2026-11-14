@@ -23,8 +23,8 @@ How the QNM Analyser actually runs in production, and how to operate it.
                                      deploy.sh  (git pull, pip install, pm2 restart)
 ```
 
-- **Install root:** `/home/dds/www/qnm-analyser`
-- **Supervisor:** PM2, running as the `dds` user (not root, not `www-data`)
+- **Install root:** `$HOME/www/qnm-analyser` of the deploying account
+- **Supervisor:** PM2, running as an ordinary user account (not root, not `www-data`)
 - **Ingress:** Traefik, with its own ACME/Let's Encrypt resolver
 - **Updates:** a GitHub webhook triggers `deploy.sh`
 
